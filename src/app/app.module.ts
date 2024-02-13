@@ -2,15 +2,15 @@ import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { AppComponent } from './app.component';
-// Import other components here
+import { OauthCallbackComponent } from './oauth-callback/oauth-callback.component';
+import { SignInComponent } from './sign-in/sign-in.component';
+import { HttpClientModule } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 
 const appRoutes: Routes = [
     { path: '', redirectTo: '/sign-in', pathMatch: 'full' },
-    {
-        path: 'sign-in',
-        loadComponent: () => import('./sign-in/sign-in.component').then(m => m.SignInComponent)
-    },
-    // Define other routes here
+    { path: 'sign-in', component: SignInComponent },
+    { path: 'oauth-callback', component: OauthCallbackComponent },
 ];
 
 @NgModule({
@@ -19,7 +19,10 @@ const appRoutes: Routes = [
     ],
     imports: [
         BrowserModule,
-        RouterModule.forRoot(appRoutes)
+        RouterModule,
+        RouterModule.forRoot(appRoutes),
+        HttpClientModule,
+        FormsModule,
     ],
     providers: [],
     bootstrap: [AppComponent]
