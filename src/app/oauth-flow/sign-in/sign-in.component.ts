@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '../oauth-callback/auth.service';
+import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'app-sign-in',
