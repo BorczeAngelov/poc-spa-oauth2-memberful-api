@@ -9,46 +9,55 @@ export class AuthService {
   private static BASE_URL = "https://innovaspeak.memberful.com";
   private static CODE_CHALLENGE_METHOD = "S256";
 
-  private clientId!: string;
-  private redirectUri!: string;
 
-  private codeVerifier!: string;
-  private state!: string;
   private accessTokenSubject: BehaviorSubject<string | null> = new BehaviorSubject<string | null>(null);
   private refreshToken!: string;
+  
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {}    
 
-  // TODO: secret management instead
-  initialize(clientId: string, redirectUri: string): void {
-    this.clientId = clientId;
-    this.redirectUri = redirectUri;
-  }
-
-  async getMemberfulAuthUrl(): Promise<string> {
-    this.state = this.generateRandomString(1, true); // For state, use a single 32-bit integer
-    this.codeVerifier = this.generateRandomString(32); // For code verifier, use 32 bytes
-    const codeChallenge = await this.generateCodeChallenge(this.codeVerifier);
+  async getMemberfulAuthUrl(clientId: string, redirectUri: string): Promise<string> {
+    const state = this.generateRandomString(1, true);
+    const codeVerifier = this.generateRandomString(32);
+    const codeChallenge = await this.generateCodeChallenge(codeVerifier);
     
+    sessionStorage.setItem('oauth_state', state);
+    sessionStorage.setItem('oauth_code_verifier', codeVerifier);
+
+    // TODO: secret management instead
+    sessionStorage.setItem('workaround_clientId', clientId);
+
     return `${AuthService.BASE_URL}/oauth?` +
        `response_type=code&` +
-       `client_id=${this.clientId}&` +
-       `state=${this.state}&` +
+       `client_id=${clientId}&` +
+       `state=${state}&` +
        `code_challenge=${codeChallenge}&` +
        `code_challenge_method=${AuthService.CODE_CHALLENGE_METHOD}&` +
-       `redirect_uri=${encodeURIComponent(this.redirectUri)}`;
+       `redirect_uri=${encodeURIComponent(redirectUri)}`;
   }
   
   processOAuthCallback(code: string, receivedState: string): Observable<any> {
-    if (this.state !== receivedState) { //TODO: see if ng provides a better mechanisam for storing secret value between sessions
+    const storedState = sessionStorage.getItem('oauth_state');
+    const storedCodeVerifier = sessionStorage.getItem('oauth_code_verifier');
+    
+    if (!storedState || !storedCodeVerifier || storedState !== receivedState) {
+      // Clear stored values to prevent reuse
+      sessionStorage.removeItem('oauth_state');
+      sessionStorage.removeItem('oauth_code_verifier');
       return throwError(() => new Error("State does not match"));
     }
 
+    const storedClientId = sessionStorage.getItem('workaround_clientId');
+    if (!storedClientId)
+    {
+        return throwError(() => new Error("storedClientId is empty"));
+    }
+
     const payload = new HttpParams()
-      .set('client_id', this.clientId)
+      .set('client_id', storedClientId)
       .set('grant_type', 'authorization_code')
       .set('code', code)
-      .set('code_verifier', this.codeVerifier);
+      .set('code_verifier', storedCodeVerifier);
 
     return this.http.post<any>(`${AuthService.BASE_URL}/oauth/token`, payload, {
       headers: new HttpHeaders({ 'Content-Type': 'application/x-www-form-urlencoded' })
@@ -57,17 +66,6 @@ export class AuthService {
         return throwError(() => new Error("Failed to exchange code for tokens: " + error.message));
       }),
       tap((response) => {
-        /*
-        In response, Memberful will return an access token and a few other data points. Here's an example response:
-  
-        {
-          "access_token": "abc",
-          "token_type": "bearer",
-          "expires_in": 900,
-          "refresh_token": "zdf"
-        }
-        */
-
         this.storeTokens(response.access_token, response.refresh_token);
       })
     );
@@ -76,9 +74,16 @@ export class AuthService {
   // TODO: use an HTTP interceptor to catch responses that indicate an expired access token (typically a 401 Unauthorized response). 
   // Upon detecting such a response, the interceptor can pause further requests, refresh the token, and then retry the failed requests with the new token.
   refreshAccessToken(): Observable<any> {
+
+    const storedClientId = sessionStorage.getItem('workaround_clientId');
+    if (!storedClientId)
+    {
+        return throwError(() => new Error("storedClientId is empty"));
+    }
+
     const payload = new HttpParams()
       .set('grant_type', 'refresh_token')
-      .set('client_id', this.clientId)
+      .set('client_id', storedClientId)
       .set('refresh_token', this.refreshToken);
 
     return this.http.post<any>(`${AuthService.BASE_URL}/oauth/token`, payload, {
