@@ -24,7 +24,8 @@ export class SignInComponent {
     const clientId = this.clientIdHelper;
     const redirectUri = encodeURIComponent(this.redirectUriHelper);
     
-    const authUrl = await this.authService.getMemberfulAuthUrl(clientId, redirectUri);
+    this.authService.initialize(clientId, redirectUri);
+    const authUrl = await this.authService.getMemberfulAuthUrl();
 
     window.location.href = authUrl;
   }

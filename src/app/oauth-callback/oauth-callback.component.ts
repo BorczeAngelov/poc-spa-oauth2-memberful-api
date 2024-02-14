@@ -23,7 +23,7 @@ export class OauthCallbackComponent implements OnInit {
       
       if (code && state) {
         // Proceed with the exchange for tokens
-        this.authService.exchangeCodeForTokens(code, state).subscribe({
+        this.authService.processOAuthCallback(code, state).subscribe({
           next: (tokens: any) => {
             console.log('OAuth flow completed, tokens received', tokens);
             // Handle successful token reception (e.g., navigate to a protected route)
