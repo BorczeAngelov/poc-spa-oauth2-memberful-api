@@ -1,45 +1,39 @@
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, catchError, of, tap, throwError } from 'rxjs';
+import { PublicOAuthConfig } from './PublicOAuthConfig';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private static BASE_URL = "https://innovaspeak.memberful.com";
-  private static CODE_CHALLENGE_METHOD = "S256";
-
 
   private accessTokenSubject: BehaviorSubject<string | null> = new BehaviorSubject<string | null>(null);
   private refreshToken!: string;
-  
 
-  constructor(private http: HttpClient) {}    
+  constructor(private http: HttpClient) { }
 
-  async getMemberfulAuthUrl(clientId: string, redirectUri: string): Promise<string> {
+  async getMemberfulAuthUrl(): Promise<string> {
     const state = this.generateRandomString(1, true);
     const codeVerifier = this.generateRandomString(32);
     const codeChallenge = await this.generateCodeChallenge(codeVerifier);
-    
+
     sessionStorage.setItem('oauth_state', state);
     sessionStorage.setItem('oauth_code_verifier', codeVerifier);
 
-    // TODO: secret management instead
-    sessionStorage.setItem('workaround_clientId', clientId);
-
-    return `${AuthService.BASE_URL}/oauth?` +
-       `response_type=code&` +
-       `client_id=${clientId}&` +
-       `state=${state}&` +
-       `code_challenge=${codeChallenge}&` +
-       `code_challenge_method=${AuthService.CODE_CHALLENGE_METHOD}&` +
-       `redirect_uri=${encodeURIComponent(redirectUri)}`;
+    return `${PublicOAuthConfig.BASE_URL}/oauth?` +
+      `response_type=code&` +
+      `client_id=${PublicOAuthConfig.CLIENT_ID}&` +
+      `state=${state}&` +
+      `code_challenge=${codeChallenge}&` +
+      `code_challenge_method=${PublicOAuthConfig.CODE_CHALLENGE_METHOD}&` +
+      `redirect_uri=${encodeURIComponent(PublicOAuthConfig.REDIRECT_URI)}`;
   }
-  
+
   processOAuthCallback(code: string, receivedState: string): Observable<any> {
     const storedState = sessionStorage.getItem('oauth_state');
     const storedCodeVerifier = sessionStorage.getItem('oauth_code_verifier');
-    
+
     if (!storedState || !storedCodeVerifier || storedState !== receivedState) {
       // Clear stored values to prevent reuse
       sessionStorage.removeItem('oauth_state');
@@ -47,19 +41,13 @@ export class AuthService {
       return throwError(() => new Error("State does not match"));
     }
 
-    const storedClientId = sessionStorage.getItem('workaround_clientId');
-    if (!storedClientId)
-    {
-        return throwError(() => new Error("storedClientId is empty"));
-    }
-
     const payload = new HttpParams()
-      .set('client_id', storedClientId)
+      .set('client_id', PublicOAuthConfig.CLIENT_ID)
       .set('grant_type', 'authorization_code')
       .set('code', code)
       .set('code_verifier', storedCodeVerifier);
 
-    return this.http.post<any>(`${AuthService.BASE_URL}/oauth/token`, payload, {
+    return this.http.post<any>(`${PublicOAuthConfig.BASE_URL}/oauth/token`, payload, {
       headers: new HttpHeaders({ 'Content-Type': 'application/x-www-form-urlencoded' })
     }).pipe(
       catchError((error) => {
@@ -75,18 +63,12 @@ export class AuthService {
   // Upon detecting such a response, the interceptor can pause further requests, refresh the token, and then retry the failed requests with the new token.
   refreshAccessToken(): Observable<any> {
 
-    const storedClientId = sessionStorage.getItem('workaround_clientId');
-    if (!storedClientId)
-    {
-        return throwError(() => new Error("storedClientId is empty"));
-    }
-
     const payload = new HttpParams()
       .set('grant_type', 'refresh_token')
-      .set('client_id', storedClientId)
+      .set('client_id', PublicOAuthConfig.CLIENT_ID)
       .set('refresh_token', this.refreshToken);
 
-    return this.http.post<any>(`${AuthService.BASE_URL}/oauth/token`, payload, {
+    return this.http.post<any>(`${PublicOAuthConfig.BASE_URL}/oauth/token`, payload, {
       headers: new HttpHeaders({ 'Content-Type': 'application/x-www-form-urlencoded' })
     }).pipe(
       catchError((error) => {
@@ -96,7 +78,22 @@ export class AuthService {
         this.storeTokens(response.access_token, response.refresh_token);
       })
     );
-  }  
+  }
+
+  private generateRandomString(byteLength: number, isUint32: boolean = false): string {
+    const array = isUint32 ? new Uint32Array(byteLength) : new Uint8Array(byteLength);
+    window.crypto.getRandomValues(array);
+    return Array.from(array, dec => ('0' + dec.toString(16)).substr(-2)).join('');
+  }
+
+  private async generateCodeChallenge(codeVerifier: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(codeVerifier);
+    const hash = await window.crypto.subtle.digest('SHA-256', data);
+    const base64String = btoa(String.fromCharCode(...new Uint8Array(hash)));
+    return base64String.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  
 
   private storeTokens(accessToken: string, refreshToken: string): void {
     // Securely store the tokens for later use
@@ -106,21 +103,6 @@ export class AuthService {
     // such as secure storage mechanisms provided by the framework or platform you're using.
   }
 
-
-  private generateRandomString(byteLength: number, isUint32: boolean = false): string {
-    const array = isUint32 ? new Uint32Array(byteLength) : new Uint8Array(byteLength);
-    window.crypto.getRandomValues(array);
-    return Array.from(array, dec => ('0' + dec.toString(16)).substr(-2)).join('');
-  }
-  
-  private async generateCodeChallenge(codeVerifier: string): Promise<string> {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(codeVerifier);
-    const hash = await window.crypto.subtle.digest('SHA-256', data);
-    const base64String = btoa(String.fromCharCode(...new Uint8Array(hash)));
-    return base64String.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  }
-  
   // Utility method to access the currently stored access token
   get accessToken(): Observable<string | null> {
     return this.accessTokenSubject.asObservable();

@@ -13,19 +13,10 @@ export class SignInComponent {
 
   constructor(private authService: AuthService) { }
 
-  // Properties to hold the user-input values for secrets
-  // These properties are placeholders for the actual secrets, 
-  // which should be securely managed using a secret management system
-  clientIdHelper: string = ''; // Placeholder for the OAuth client ID
-  redirectUriHelper: string = ''; // Placeholder for the OAuth redirect URI
-
   // Start the authentication flow
-  async initiateMemberfulSignIn(): Promise<void> {
-    const clientId = this.clientIdHelper;
-    const redirectUri = encodeURIComponent(this.redirectUriHelper);
-    
-    const authUrl = await this.authService.getMemberfulAuthUrl(clientId, redirectUri);
+  async initiateMemberfulSignIn(): Promise<void> {    
 
+    const authUrl = await this.authService.getMemberfulAuthUrl();
     window.location.href = authUrl;
   }
 }
