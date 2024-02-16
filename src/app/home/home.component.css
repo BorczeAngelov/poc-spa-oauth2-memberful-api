@@ -1,0 +1,36 @@
+.celebration-container {
+    text-align: center;
+    padding: 20px;
+  }
+  
+  .celebration-container svg {
+    width: 100%;
+    height: 200px;
+    margin-bottom: 20px;
+  }
+  
+  .celebration-container h1 {
+    color: #4CAF50;
+    animation: pulse 1s infinite;
+  }
+  
+  .celebration-container p {
+    font-size: 18px;
+    color: #333;
+  }
+  
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.05);
+      opacity: 0.7;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  
