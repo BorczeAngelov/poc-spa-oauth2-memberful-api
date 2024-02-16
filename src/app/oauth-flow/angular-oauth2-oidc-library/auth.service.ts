@@ -11,11 +11,12 @@ export class AuthService {
 
   constructor(private oauthService: OAuthService, private authConfig: AuthConfig) {
     this.oauthService.configure(authConfig);
-    this.oauthService.loadDiscoveryDocumentAndTryLogin().then(_ => {
-      if (this.oauthService.hasValidAccessToken()) {
-        this.accessTokenSubject.next(this.oauthService.getAccessToken());
-      }
-    });
+
+    // Maybe this will be needed on refresh...?
+    // this.oauthService.tryLogin()
+    //   .then(this.handleNewToken)
+    //   .catch(err => { console.error('AuthService: Error during login process.', err); });
+
 
     this.oauthService.events.subscribe(event => {
       if (event instanceof OAuthErrorEvent) {
@@ -46,4 +47,5 @@ export class AuthService {
   }
 
   // Add other methods as needed, leveraging OAuthService for tasks such as token refresh
+  // Note: there might be out-of-the-box solutions for token refresh from angular-oauth2-oidc lib
 }

@@ -7,7 +7,7 @@ import { SignInComponent } from './oauth-flow/custom-oauth-flow/sign-in/sign-in.
 import { HttpClientModule } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { OAuthModule, AuthConfig, OAuthStorage } from 'angular-oauth2-oidc';
-import { publicAuthConfig } from './oauth-flow/angular-oauth2-oidc-library/PublicAuthConfig';
+import { BASE_URL, publicAuthConfig } from './oauth-flow/angular-oauth2-oidc-library/PublicAuthConfig';
 import { LoginComponent } from './oauth-flow/angular-oauth2-oidc-library/login-component';
 import { OAuthCallbackComponent } from './oauth-flow/angular-oauth2-oidc-library/oauth-callback-component';
 import { HomeComponent } from './home/home.component';
@@ -34,7 +34,7 @@ const appRoutes: Routes = [
         FormsModule,
         OAuthModule.forRoot({
             resourceServer: {
-                allowedUrls: [publicAuthConfig.issuer!],
+                allowedUrls: [BASE_URL],
                 sendAccessToken: true,
             },
         }),
